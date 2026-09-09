@@ -1,0 +1,1 @@
+{"version":"0.0.1","configurations":[{"name":"mflick","runtimeExecutable":"npx","runtimeArgs":["next","dev"],"autoPort":true}]}
