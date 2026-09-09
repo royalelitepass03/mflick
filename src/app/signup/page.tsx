@@ -13,7 +13,7 @@ export default function SignupPage() {
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email: form.email,
-      password: form.password || 'defaultPassword123', // you might want a proper password step
+      password: form.password,
       options: {
         data: {
           username: form.username,
@@ -51,10 +51,14 @@ export default function SignupPage() {
           {step === 1 ? (
             <>
               <h2 className="text-xl font-display font-semibold text-[#F0F2F5] mb-1">Join mFlick</h2>
-              <p className="text-[#8A9099] text-sm mb-6">Start with your email.</p>
+              <p className="text-[#8A9099] text-sm mb-6">Start with your email and password.</p>
               <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="flex flex-col gap-3.5">
                 <label htmlFor="signup-email" className="text-xs font-medium text-[#8A9099] uppercase tracking-wider">Email</label>
                 <input id="signup-email" type="email" required placeholder="you@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#101217] border border-[#242832] text-[#F0F2F5] placeholder-[#5a6068] text-sm outline-none focus:border-[#E8A93F]/60 focus:ring-1 focus:ring-[#E8A93F]/20 transition" />
+
+                <label htmlFor="signup-password" className="text-xs font-medium text-[#8A9099] uppercase tracking-wider mt-1">Password</label>
+                <input id="signup-password" type="password" required placeholder="••••••••" minLength={6} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#101217] border border-[#242832] text-[#F0F2F5] placeholder-[#5a6068] text-sm outline-none focus:border-[#E8A93F]/60 focus:ring-1 focus:ring-[#E8A93F]/20 transition" />
+
                 <button type="submit" className="mt-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E8A93F] to-[#C2862B] text-[#08090D] font-extrabold text-sm shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">Continue <ArrowRight size={16} /></button>
               </form>
             </>
