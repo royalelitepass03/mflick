@@ -1,7 +1,9 @@
 "use client";
 import { useState } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
