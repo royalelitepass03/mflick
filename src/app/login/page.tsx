@@ -18,8 +18,10 @@ export default function LoginPage() {
 
     // Diagnostic output — safe, no secrets
     const diagLines: string[] = [];
+    diagLines.push(`=== LOGIN DIAGNOSTIC ===`);
     diagLines.push(`Timestamp: ${new Date().toISOString()}`);
     diagLines.push(`Email submitted: ${email}`);
+    diagLines.push(`Password length: ${password.length}`);
     diagLines.push(`Error is null: ${error === null}`);
     if (error) {
       diagLines.push(`Error message: ${error.message}`);
