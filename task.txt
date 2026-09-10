@@ -1,0 +1,5 @@
+Do not restore either file with git checkout. The current authentication implementation is working in production and must not be reverted.
+
+Stop and inspect the current files and git history first. I want the temporary diagnostic code removed WITHOUT reverting the working authentication fixes.
+
+Do not modify anything else until you have identified exactly which lines are temporary diagnostics and which changes are required for the working cookie-based Supabase authentication.
