@@ -58,6 +58,25 @@ export default function HomeClient() {
   const name = profile?.full_name || user?.email || 'You';
   const handleUser = '@' + (profile?.username || 'you');
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-main text-[#8A9099] text-lg">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8A93F] to-[#C2862B] animate-pulse" />
+          <span>Loading mFlick...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-main text-[#F0F2F5]">
+        <a href="/login" className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E8A93F] to-[#C2862B] text-[#08090D] font-bold shadow-lg">Go to Login</a>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-bg-main">
       <Sidebar active="/" profile={profile || undefined} />
