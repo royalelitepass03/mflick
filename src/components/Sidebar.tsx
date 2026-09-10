@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Home, Hash, Bell, Mail, Settings, Search, Menu, X } from 'lucide-react';
 
-export default function Sidebar({ active }: { active: string }) {
+export default function Sidebar({ active, profile }: { active: string; profile?: { full_name?: string; username?: string; avatar_url?: string } }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const links = [
@@ -75,10 +75,10 @@ export default function Sidebar({ active }: { active: string }) {
 
         {/* User mini */}
         <a href="/settings" className="mt-auto flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#101217]/60 transition-colors group" onClick={() => setMobileOpen(false)}>
-          <img src="https://i.pravatar.cc/150?img=12" alt="Profile" className="w-9 h-9 rounded-full ring-2 ring-[#242832] group-hover:ring-[#E8A93F]/40 transition-all object-cover" />
+          <img src={profile?.avatar_url || 'https://i.pravatar.cc/150?img=12'} alt="Profile" className="w-9 h-9 rounded-full ring-2 ring-[#242832] group-hover:ring-[#E8A93F]/40 transition-all object-cover" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#F0F2F5] truncate">Alex Rivera</p>
-            <p className="text-[11px] text-[#8A9099] truncate">@arivera</p>
+            <p className="text-sm font-semibold text-[#F0F2F5] truncate">{profile?.full_name || 'You'}</p>
+            <p className="text-[11px] text-[#8A9099] truncate">@{profile?.username || 'you'}</p>
           </div>
         </a>
       </aside>

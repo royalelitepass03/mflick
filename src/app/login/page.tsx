@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 const supabase = createClient();
@@ -9,56 +9,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [diag, setDiag] = useState<string>('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setDiag('Calling signInWithPassword...');
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    // Diagnostic output — safe, no secrets
-    const diagLines: string[] = [];
-    diagLines.push(`=== LOGIN DIAGNOSTIC ===`);
-    diagLines.push(`Timestamp: ${new Date().toISOString()}`);
-    diagLines.push(`Email submitted: ${email}`);
-    diagLines.push(`Password length: ${password.length}`);
-    diagLines.push(`Error is null: ${error === null}`);
-    if (error) {
-      diagLines.push(`Error message: ${error.message}`);
-      diagLines.push(`Error code: ${(error as any).code ?? 'N/A'}`);
-      diagLines.push(`Error status: ${(error as any).status ?? 'N/A'}`);
-    }
-    diagLines.push(`data exists: ${data !== null && data !== undefined}`);
-    diagLines.push(`data.user exists: ${data?.user !== null && data?.user !== undefined}`);
-    diagLines.push(`data.session exists: ${data?.session !== null && data?.session !== undefined}`);
-    if (data?.user) {
-      diagLines.push(`user.id exists: ${data.user.id !== null && data.user.id !== undefined}`);
-      diagLines.push(`user.email exists: ${data.user.email !== null && data.user.email !== undefined}`);
-      diagLines.push(`user.email_confirmed_at: ${data.user.email_confirmed_at ?? 'null'}`);
-      diagLines.push(`user.aud: ${data.user.aud ?? 'N/A'}`);
-      diagLines.push(`user.role: ${data.user.role ?? 'N/A'}`);
-    }
-    if (data?.session) {
-      diagLines.push(`session.access_token exists: ${!!data.session.access_token}`);
-      diagLines.push(`session.refresh_token exists: ${!!data.session.refresh_token}`);
-      diagLines.push(`session.expires_at: ${data.session.expires_at ?? 'N/A'}`);
-    }
-    diagLines.push(`Supabase URL configured: ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
-    diagLines.push(`Supabase ANON_KEY configured: ${!!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`);
-    diagLines.push(`Supabase URL value starts with https: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('https://') ?? false}`);
-    diagLines.push(`Supabase URL ends with .supabase.co: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.endsWith('.supabase.co') ?? false}`);
-
-    const diagText = diagLines.join('\n');
-    console.log('[mFlick DIAGNOSTIC]', diagText);
-    setDiag(diagText);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      window.location.href = '/';
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else window.location.href = '/';
     setLoading(false);
   };
 
@@ -108,14 +65,6 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-[#8A9099] mt-6">New here? <a href="/signup" className="text-[#E8A93F] font-semibold hover:underline">Create an account</a></p>
         </div>
-
-        {/* TEMPORARY DIAGNOSTIC PANEL — remove after debugging */}
-        {diag && (
-          <div className="mt-6 bg-[#08090D]/90 border border-red-900/40 rounded-2xl p-5 shadow-xl">
-            <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-3">🔍 Diagnostic Output (temporary)</h3>
-            <pre className="text-[11px] text-[#8A9099] whitespace-pre-wrap font-mono leading-relaxed">{diag}</pre>
-          </div>
-        )}
       </div>
     </div>
   );
