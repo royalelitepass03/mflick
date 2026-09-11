@@ -15,6 +15,9 @@ export default function HomeClient() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [togglingLike, setTogglingLike] = useState<Set<string>>(new Set());
+  const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
+  const [repostCounts, setRepostCounts] = useState<Record<string, number>>({});
+  const [togglingRepost, setTogglingRepost] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const supabase = createClient();
@@ -24,15 +27,24 @@ export default function HomeClient() {
     if (!user) return;
     const { data: likes } = await supabase.from('likes').select('post_id').eq('user_id', user.id);
     if (likes) setLikedPosts(new Set(likes.map(l => l.post_id)));
-    const { data: counts } = await supabase.from('likes').select('post_id').then(r => {
-      if (r.data) {
-        const c: Record<string, number> = {};
-        r.data.forEach(l => { c[l.post_id] = (c[l.post_id] || 0) + 1; });
-        return { data: c };
-      }
-      return { data: {} };
-    });
-    if (counts) setLikeCounts(counts);
+    const { data: counts } = await supabase.from('likes').select('post_id');
+    if (counts) {
+      const c: Record<string, number> = {};
+      counts.forEach(l => { c[l.post_id] = (c[l.post_id] || 0) + 1; });
+      setLikeCounts(c);
+    }
+  }
+
+  async function loadRepostStates() {
+    if (!user) return;
+    const { data: myReposts } = await supabase.from('reposts').select('post_id').eq('user_id', user.id);
+    if (myReposts) setRepostedPosts(new Set(myReposts.map(r => r.post_id)));
+    const { data: allReposts } = await supabase.from('reposts').select('post_id');
+    if (allReposts) {
+      const c: Record<string, number> = {};
+      allReposts.forEach(r => { c[r.post_id] = (c[r.post_id] || 0) + 1; });
+      setRepostCounts(c);
+    }
   }
 
   useEffect(() => {
@@ -45,6 +57,7 @@ export default function HomeClient() {
       }
       await loadPosts();
       await loadLikeStates();
+      await loadRepostStates();
       setLoading(false);
     }
     init();
@@ -119,6 +132,30 @@ export default function HomeClient() {
       }
     }
     setTogglingLike(s => { const n = new Set(s); n.delete(postId); return n; });
+  }
+
+  async function toggleRepost(postId: string) {
+    if (!user) return;
+    setTogglingRepost(s => new Set(s).add(postId));
+    const isReposted = repostedPosts.has(postId);
+    if (isReposted) {
+      const { error } = await supabase.from('reposts').delete().eq('user_id', user.id).eq('post_id', postId);
+      if (!error) {
+        setRepostedPosts(s => { const n = new Set(s); n.delete(postId); return n; });
+        setRepostCounts(c => ({ ...c, [postId]: (c[postId] || 1) - 1 }));
+      } else {
+        alert('Unrepost failed: ' + error.message);
+      }
+    } else {
+      const { error } = await supabase.from('reposts').insert({ user_id: user.id, post_id: postId });
+      if (!error) {
+        setRepostedPosts(s => new Set(s).add(postId));
+        setRepostCounts(c => ({ ...c, [postId]: (c[postId] || 0) + 1 }));
+      } else {
+        alert('Repost failed: ' + error.message);
+      }
+    }
+    setTogglingRepost(s => { const n = new Set(s); n.delete(postId); return n; });
   }
 
   async function handleEditPost(id: string) {
@@ -271,7 +308,9 @@ export default function HomeClient() {
                         <button onClick={() => toggleLike(post.id)} disabled={togglingLike.has(post.id)} className={`hover:text-[#E8A93F] transition flex items-center gap-1.5 group ${likedPosts.has(post.id) ? 'text-[#E8A93F]' : 'text-[#8A9099]'}`}>
                           <span className={`transition-transform ${likedPosts.has(post.id) ? 'scale-110' : 'group-hover:scale-110'}`}>{likedPosts.has(post.id) ? '♥' : '♡'}</span> {(likeCounts[post.id] || 0)}
                         </button>
-                        <button className="hover:text-[#3B82F6] transition flex items-center gap-1.5 text-[#8A9099]"><span>↩</span> 0</button>
+                        <button onClick={() => toggleRepost(post.id)} disabled={togglingRepost.has(post.id)} className={`hover:text-[#3B82F6] transition flex items-center gap-1.5 ${repostedPosts.has(post.id) ? 'text-[#3B82F6]' : 'text-[#8A9099]'}`}>
+                          <span className="transition-transform">{repostedPosts.has(post.id) ? '↩' : '↩'}</span> {(repostCounts[post.id] || 0)}
+                        </button>
                         <button className="hover:text-[#10B981] transition flex items-center gap-1.5 text-[#8A9099]"><span>💬</span> 0</button>
                       </div>
                     </div>
