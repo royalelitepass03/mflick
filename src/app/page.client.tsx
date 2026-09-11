@@ -12,10 +12,28 @@ export default function HomeClient() {
   const [editContent, setEditContent] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [togglingLike, setTogglingLike] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const supabase = createClient();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  async function loadLikeStates() {
+    if (!user) return;
+    const { data: likes } = await supabase.from('likes').select('post_id').eq('user_id', user.id);
+    if (likes) setLikedPosts(new Set(likes.map(l => l.post_id)));
+    const { data: counts } = await supabase.from('likes').select('post_id').then(r => {
+      if (r.data) {
+        const c: Record<string, number> = {};
+        r.data.forEach(l => { c[l.post_id] = (c[l.post_id] || 0) + 1; });
+        return { data: c };
+      }
+      return { data: {} };
+    });
+    if (counts) setLikeCounts(counts);
+  }
 
   useEffect(() => {
     async function init() {
@@ -26,6 +44,7 @@ export default function HomeClient() {
         setProfile(p);
       }
       await loadPosts();
+      await loadLikeStates();
       setLoading(false);
     }
     init();
@@ -80,6 +99,26 @@ export default function HomeClient() {
     } else {
       alert('Delete failed: ' + error.message);
     }
+  }
+
+  async function toggleLike(postId: string) {
+    if (!user) return;
+    setTogglingLike(s => new Set(s).add(postId));
+    const isLiked = likedPosts.has(postId);
+    if (isLiked) {
+      const { error } = await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', postId);
+      if (!error) {
+        setLikedPosts(s => { const n = new Set(s); n.delete(postId); return n; });
+        setLikeCounts(c => ({ ...c, [postId]: (c[postId] || 1) - 1 }));
+      }
+    } else {
+      const { error } = await supabase.from('likes').insert({ user_id: user.id, post_id: postId });
+      if (!error) {
+        setLikedPosts(s => new Set(s).add(postId));
+        setLikeCounts(c => ({ ...c, [postId]: (c[postId] || 0) + 1 }));
+      }
+    }
+    setTogglingLike(s => { const n = new Set(s); n.delete(postId); return n; });
   }
 
   async function handleEditPost(id: string) {
@@ -228,10 +267,12 @@ export default function HomeClient() {
                       )}
 
                       {/* Action bar */}
-                      <div className="flex gap-6 text-[#8A9099] text-sm font-medium">
-                        <button className="hover:text-[#E8A93F] transition flex items-center gap-1.5 group"><span className="group-hover:scale-110 transition-transform">♥</span> 0</button>
-                        <button className="hover:text-[#3B82F6] transition flex items-center gap-1.5"><span>↩</span> 0</button>
-                        <button className="hover:text-[#10B981] transition flex items-center gap-1.5"><span>💬</span> 0</button>
+                      <div className="flex gap-6 text-sm font-medium">
+                        <button onClick={() => toggleLike(post.id)} disabled={togglingLike.has(post.id)} className={`hover:text-[#E8A93F] transition flex items-center gap-1.5 group ${likedPosts.has(post.id) ? 'text-[#E8A93F]' : 'text-[#8A9099]'}`}>
+                          <span className={`transition-transform ${likedPosts.has(post.id) ? 'scale-110' : 'group-hover:scale-110'}`}>{likedPosts.has(post.id) ? '♥' : '♡'}</span> {(likeCounts[post.id] || 0)}
+                        </button>
+                        <button className="hover:text-[#3B82F6] transition flex items-center gap-1.5 text-[#8A9099]"><span>↩</span> 0</button>
+                        <button className="hover:text-[#10B981] transition flex items-center gap-1.5 text-[#8A9099]"><span>💬</span> 0</button>
                       </div>
                     </div>
                   </div>
