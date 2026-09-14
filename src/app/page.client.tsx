@@ -18,6 +18,11 @@ export default function HomeClient() {
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [repostCounts, setRepostCounts] = useState<Record<string, number>>({});
   const [togglingRepost, setTogglingRepost] = useState<Set<string>>(new Set());
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [expandedComments, setExpandedComments] = useState<string | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const supabase = createClient();
@@ -47,6 +52,16 @@ export default function HomeClient() {
     }
   }
 
+  async function loadCommentCounts() {
+    if (!user) return;
+    const { data: allComments } = await supabase.from('comments').select('post_id');
+    if (allComments) {
+      const c: Record<string, number> = {};
+      allComments.forEach(cmt => { c[cmt.post_id] = (c[cmt.post_id] || 0) + 1; });
+      setCommentCounts(c);
+    }
+  }
+
   useEffect(() => {
     async function init() {
       const { data: { user: u } } = await supabase.auth.getUser();
@@ -58,6 +73,7 @@ export default function HomeClient() {
       await loadPosts();
       await loadLikeStates();
       await loadRepostStates();
+      await loadCommentCounts();
       setLoading(false);
     }
     init();
@@ -156,6 +172,54 @@ export default function HomeClient() {
       }
     }
     setTogglingRepost(s => { const n = new Set(s); n.delete(postId); return n; });
+  }
+
+  async function loadCommentsForPost(postId: string) {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*, profiles:profiles(*)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    if (!error && data) setComments(data);
+  }
+
+  async function toggleComments(postId: string) {
+    if (expandedComments === postId) {
+      setExpandedComments(null);
+      setComments([]);
+    } else {
+      setExpandedComments(postId);
+      await loadCommentsForPost(postId);
+    }
+  }
+
+  async function postComment(postId: string) {
+    if (!user || !profile || !newComment.trim()) return;
+    setPostingComment(true);
+    const { error } = await supabase.from('comments').insert({
+      user_id: user.id,
+      post_id: postId,
+      content: newComment.trim()
+    });
+    setPostingComment(false);
+    if (!error) {
+      setNewComment('');
+      await loadCommentsForPost(postId);
+      setCommentCounts(c => ({ ...c, [postId]: (c[postId] || 0) + 1 }));
+    } else {
+      alert('Comment failed: ' + error.message);
+    }
+  }
+
+  async function deleteComment(commentId: string, postId: string) {
+    if (!window.confirm('Delete this comment?')) return;
+    const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (!error) {
+      setComments(c => c.filter(c => c.id !== commentId));
+      setCommentCounts(c => ({ ...c, [postId]: (c[postId] || 1) - 1 }));
+    } else {
+      alert('Delete comment failed: ' + error.message);
+    }
   }
 
   async function handleEditPost(id: string) {
@@ -311,8 +375,40 @@ export default function HomeClient() {
                         <button onClick={() => toggleRepost(post.id)} disabled={togglingRepost.has(post.id)} className={`hover:text-[#3B82F6] transition flex items-center gap-1.5 ${repostedPosts.has(post.id) ? 'text-[#3B82F6]' : 'text-[#8A9099]'}`}>
                           <span className="transition-transform">{repostedPosts.has(post.id) ? '↩' : '↩'}</span> {(repostCounts[post.id] || 0)}
                         </button>
-                        <button className="hover:text-[#10B981] transition flex items-center gap-1.5 text-[#8A9099]"><span>💬</span> 0</button>
+                        <button onClick={() => toggleComments(post.id)} className={`hover:text-[#10B981] transition flex items-center gap-1.5 ${expandedComments === post.id ? 'text-[#10B981]' : 'text-[#8A9099]'}`}><span>💬</span> {(commentCounts[post.id] || 0)}</button>
                       </div>
+
+                      {/* Comments section */}
+                      {expandedComments === post.id && (
+                        <div className="mt-3 pt-3 border-t border-[#1a1d23]">
+                          {comments.map((cmt: any) => (
+                            <div key={cmt.id} className="flex gap-2.5 py-2">
+                              <img src={cmt.profiles?.avatar_url || 'https://i.pravatar.cc/150?img=12'} alt="" className="w-7 h-7 rounded-full ring-1 ring-[#242832] shrink-0 object-cover" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold text-[#F0F2F5]">{cmt.profiles?.full_name || 'User'}</span>
+                                  <span className="text-[10px] text-[#5a6068]">· {new Date(cmt.created_at).toLocaleString('en-US', { hour: 'numeric', minute: 'numeric' })}</span>
+                                  {user && cmt.user_id === user.id && (
+                                    <button onClick={() => deleteComment(cmt.id, post.id)} className="text-[10px] text-[#5a6068] hover:text-red-400 ml-auto transition">delete</button>
+                                  )}
+                                </div>
+                                <p className="text-sm text-[#D1D5DB] leading-snug mt-0.5">{cmt.content}</p>
+                              </div>
+                            </div>
+                          ))}
+                          {comments.length === 0 && <p className="text-[#8A9099] text-xs">No comments yet.</p>}
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              value={newComment}
+                              onChange={e => setNewComment(e.target.value)}
+                              placeholder="Write a comment..."
+                              className="flex-1 bg-[#08090D] border border-[#242832] rounded-full px-3 py-1.5 text-xs text-[#F0F2F5] placeholder-[#5a6068] outline-none focus:border-[#E8A93F]/60"
+                              onKeyDown={e => { if (e.key === 'Enter') postComment(post.id); }}
+                            />
+                            <button onClick={() => postComment(post.id)} disabled={postingComment || !newComment.trim()} className="px-3 py-1.5 rounded-full bg-gradient-to-r from-[#E8A93F] to-[#C2862B] text-[#08090D] text-xs font-bold transition disabled:opacity-50">{postingComment ? '...' : 'Post'}</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </article>
