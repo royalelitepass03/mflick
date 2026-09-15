@@ -9,16 +9,12 @@ export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ email: '', password: '', birthdate: '', name: '', username: '' });
   const [loading, setLoading] = useState(false);
-  const [diag, setDiag] = useState<string>('');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const signupTimestamp = new Date().toISOString();
-    setDiag(`Signing up at ${signupTimestamp}...`);
-
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -30,61 +26,11 @@ export default function SignupPage() {
       }
     });
 
-    // Diagnostic output — safe, no secrets
-    const diagLines: string[] = [];
-    diagLines.push(`=== SIGNUP DIAGNOSTIC ===`);
-    diagLines.push(`Timestamp: ${signupTimestamp}`);
-    diagLines.push(`Email submitted: ${form.email}`);
-    diagLines.push(`Password length: ${form.password.length}`);
-    diagLines.push(`---`);
-    diagLines.push(`error is null: ${error === null}`);
     if (error) {
-      diagLines.push(`error.message: ${error.message}`);
-      diagLines.push(`error.code: ${(error as any).code ?? 'N/A'}`);
-      diagLines.push(`error.status: ${(error as any).status ?? 'N/A'}`);
-    }
-    diagLines.push(`data exists: ${data !== null && data !== undefined}`);
-    diagLines.push(`data.user exists: ${data?.user !== null && data?.user !== undefined}`);
-    diagLines.push(`data.session exists: ${data?.session !== null && data?.session !== undefined}`);
-    if (data?.user) {
-      diagLines.push(`user.id exists: ${!!data.user.id}`);
-      diagLines.push(`user.email: ${data.user.email ?? 'null'}`);
-      diagLines.push(`user.email_confirmed_at: ${data.user.email_confirmed_at ?? 'null'}`);
-      diagLines.push(`user.confirmed_at: ${data.user.confirmed_at ?? 'null'}`);
-      diagLines.push(`user.identities exists: ${data.user.identities !== null && data.user.identities !== undefined}`);
-      diagLines.push(`user.identities.length: ${data.user.identities?.length ?? 'N/A'}`);
-      if (data.user.identities && data.user.identities.length > 0) {
-        data.user.identities.forEach((id: any, i: number) => {
-          diagLines.push(`  identity[${i}].provider: ${id.provider ?? 'N/A'}`);
-          diagLines.push(`  identity[${i}].id: ${id.id ?? 'N/A'}`);
-          diagLines.push(`  identity[${i}].identity_data: ${JSON.stringify(id.identity_data ?? {})}`);
-        });
-      } else {
-        diagLines.push(`  WARNING: identities is empty — user may already exist with this email`);
-      }
-      diagLines.push(`user.aud: ${data.user.aud ?? 'N/A'}`);
-      diagLines.push(`user.role: ${data.user.role ?? 'N/A'}`);
-    }
-    if (data?.session) {
-      diagLines.push(`session.access_token exists: ${!!data.session.access_token}`);
-      diagLines.push(`session.refresh_token exists: ${!!data.session.refresh_token}`);
-      diagLines.push(`session.expires_at: ${data.session.expires_at ?? 'N/A'}`);
+      alert(error.message);
     } else {
-      diagLines.push(`session is null — expected if email confirmation is required`);
-    }
-
-    const diagText = diagLines.join('\n');
-    console.log('[mFlick SIGNUP DIAGNOSTIC]', diagText);
-    setDiag(diagText);
-
-    if (error) {
-      alert(`Signup error: ${error.message}`);
-    } else {
-      // Don't redirect — keep page visible so user can read diagnostic
-      // Alert tells user to confirm email
       alert('Check your email for confirmation!');
-      // Still redirect after a short delay so diagnostic can be read
-      setTimeout(() => { window.location.href = '/'; }, 3000);
+      window.location.href = '/';
     }
     setLoading(false);
   };
@@ -145,14 +91,6 @@ export default function SignupPage() {
             </>
           )}
         </div>
-
-        {/* TEMPORARY DIAGNOSTIC PANEL — remove after debugging */}
-        {diag && (
-          <div className="mt-6 bg-[#08090D]/90 border border-red-900/40 rounded-2xl p-5 shadow-xl">
-            <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-3">🔍 Signup Diagnostic (temporary)</h3>
-            <pre className="text-[11px] text-[#8A9099] whitespace-pre-wrap font-mono leading-relaxed">{diag}</pre>
-          </div>
-        )}
       </div>
     </div>
   );
